@@ -9,22 +9,22 @@ public class DynamicMeshEditor : Editor {
             AddVertex();
 
         if(GUILayout.Button("Clear"))
-            ClearVertex();
+            ClearVertices();
 
         base.OnInspectorGUI();
 	}
 
-    private void ClearVertex() {
-        DynamicVertex[] vertices = (target as DynamicMesh).Vertices;
+    private void ClearVertices() {
+        DynamicVertex[] vertices = (target as DynamicMesh).DynamicVertices;
 
         foreach(DynamicVertex vertex in vertices)
             GameObject.DestroyImmediate(vertex.gameObject);
 
-        (target as DynamicMesh).Vertices = new DynamicVertex[0];
+        (target as DynamicMesh).DynamicVertices = new DynamicVertex[0];
     }
 
     private void AddVertex() {
-        DynamicVertex[] vertices = (target as DynamicMesh).Vertices;
+        DynamicVertex[] vertices = (target as DynamicMesh).DynamicVertices;
 
         DynamicVertex[] newVertices = new DynamicVertex[vertices.Length + 1];
 
@@ -33,7 +33,9 @@ public class DynamicMeshEditor : Editor {
 
         newVertices[newVertices.Length - 1] = CreateNewVertex();
 
-        (target as DynamicMesh).Vertices = newVertices;
+        (target as DynamicMesh).DynamicVertices = newVertices;
+
+        EditorUtility.SetDirty(target);
     }
 
     private DynamicVertex CreateNewVertex() {
