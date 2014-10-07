@@ -8,6 +8,9 @@ public class DynamicMeshEditor : Editor {
         if(GUILayout.Button("Add Vertex"))
             AddVertex();
 
+        if(GUILayout.Button("Remove Vertex"))
+            RemoveVertex();
+
         if(GUILayout.Button("Clear"))
             ClearVertices();
 
@@ -28,22 +31,38 @@ public class DynamicMeshEditor : Editor {
 
         DynamicVertex[] newVertices = new DynamicVertex[vertices.Length + 1];
 
-        for(int i = 0; i < vertices.Length; i++)
+        for(int i = 0; i < newVertices.Length; i++)
             newVertices[i] = vertices[i];
 
         newVertices[newVertices.Length - 1] = CreateNewVertex();
 
         (target as DynamicMesh).DynamicVertices = newVertices;
 
-        EditorUtility.SetDirty(target);
+        //EditorUtility.SetDirty(target);
+    }
+
+    private void RemoveVertex() {
+        DynamicVertex[] vertices = (target as DynamicMesh).DynamicVertices;
+
+        DynamicVertex[] newVertices = new DynamicVertex[vertices.Length - 1];
+
+        for(int i = 0; i < newVertices.Length; i++)
+            newVertices[i] = vertices[i];
+
+        GameObject.DestroyImmediate(vertices[vertices.Length - 1].gameObject);
+
+        (target as DynamicMesh).DynamicVertices = newVertices;
+        
+        //EditorUtility.SetDirty(target);
     }
 
     private DynamicVertex CreateNewVertex() {
-        GameObject go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        go.name = "DynamicVertex";
+        GameObject prototype = (GameObject)Resources.Load("Prefabs/DynamicVertex");
+
+        GameObject go = (GameObject)GameObject.Instantiate(prototype);
         go.transform.parent = (target as DynamicMesh).gameObject.transform;
         go.transform.localPosition = Vector3.zero;
 
-        return go.AddComponent<DynamicVertex>();
+        return go.GetComponent<DynamicVertex>();
     }
 }
