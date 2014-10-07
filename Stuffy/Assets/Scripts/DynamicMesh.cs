@@ -3,21 +3,33 @@ using System.Collections;
 
 [ExecuteInEditMode]
 public class DynamicMesh : MonoBehaviour {
-	public DynamicVertex[] DynamicVertices;
+    public DynamicVertex[] DynamicVertices;
+
+    public GameObject Centroid;
 
 	void Awake() {
-
+        if(Centroid == null) {
+            Centroid = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            Centroid.name = "Centroid";
+            Centroid.transform.parent = gameObject.transform;
+            Centroid.transform.localPosition = Vector3.zero;
+            Centroid.transform.localScale = new Vector3(50.0f, 50.0f, 50.0f);
+        }
 	}
 	
 	void Update() {
-        gameObject.GetComponent<MeshFilter>().mesh.Clear();
+        ClearMesh();
 
         if(DynamicVertices != null && DynamicVertices.Length > 1) {
-            Debug.Log("redrawin");
-
             UpdateMesh();
         }
+
+        UpdateCentroid();
 	}
+
+    private void ClearMesh() {
+        gameObject.GetComponent<MeshFilter>().mesh.Clear();
+    }
 
     private void UpdateMesh() {
         Mesh mesh = gameObject.GetComponent<MeshFilter>().sharedMesh;
@@ -29,8 +41,17 @@ public class DynamicMesh : MonoBehaviour {
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
         mesh.Optimize();
-        
-        //gameObject.GetComponent<MeshFilter>().mesh = _mesh;
+    }
+
+    private void UpdateCentroid() {
+        if(DynamicVertices == null || DynamicVertices.Length < 2) {
+            Centroid.transform.localPosition = Vector3.zero;
+            Centroid.GetComponent<MeshRenderer>().enabled = false;
+        } else {
+            Vector2 centroid = CalculateCentroid();
+            Centroid.transform.localPosition = new Vector3(centroid.x, centroid.y, -50);
+            Centroid.GetComponent<MeshRenderer>().enabled = true;
+        }
     }
 
     private Vector3[] GetVertices() {
@@ -53,13 +74,43 @@ public class DynamicMesh : MonoBehaviour {
         return normals;
     }
 
+    // TODO: this could also just be regenerated when points change
     private int[] GetTriangles() {
-        int[] triangles = new int[3 * (DynamicVertices.Length - 2)];
+        int triCount = DynamicVertices.Length - 2;
 
-        triangles[0] = 0;
-        triangles[1] = 1;
-        triangles[2] = 2;
+        int[] triangles = new int[3 * triCount];
+
+        for(int i = 0; i < triCount; i++) {
+            int idx = i * 3;
+
+            triangles[idx] = 0;
+            triangles[idx + 1] = i + 1;
+            triangles[idx + 2] = i + 2;
+
+            //Debug.Log("tri with " + triangles[i] + " " + triangles[i + 1] + " " + triangles[i + 2]);
+        }
 
         return triangles;
+    }
+
+    private Vector2 CalculateCentroid() {
+        float signedArea = 0;
+        float cx = 0;
+        float cy = 0;
+
+        for(int i = 0; i < DynamicVertices.Length; i++) {
+            Vector3 current = DynamicVertices[i].transform.localPosition;
+            Vector3 next = DynamicVertices[(i + 1) % DynamicVertices.Length].transform.localPosition;
+
+            signedArea += current.x * next.y - next.x * current.y;
+            cx += (current.x + next.x) * (current.x * next.y - next.x * current.y);
+            cy += (current.y + next.y) * (current.x * next.y - next.x * current.y);
+        }
+
+        signedArea /= 2;
+        cx /= (6 * signedArea);
+        cy /= (6 * signedArea);
+
+        return new Vector2(cx, cy);
     }
 }
