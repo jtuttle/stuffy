@@ -31,14 +31,12 @@ public class DynamicMeshEditor : Editor {
 
         DynamicVertex[] newVertices = new DynamicVertex[vertices.Length + 1];
 
-        for(int i = 0; i < newVertices.Length; i++)
+        for(int i = 0; i < vertices.Length; i++)
             newVertices[i] = vertices[i];
 
         newVertices[newVertices.Length - 1] = CreateNewVertex();
 
         (target as DynamicMesh).DynamicVertices = newVertices;
-
-        //EditorUtility.SetDirty(target);
     }
 
     private void RemoveVertex() {
@@ -52,8 +50,6 @@ public class DynamicMeshEditor : Editor {
         GameObject.DestroyImmediate(vertices[vertices.Length - 1].gameObject);
 
         (target as DynamicMesh).DynamicVertices = newVertices;
-        
-        //EditorUtility.SetDirty(target);
     }
 
     private DynamicVertex CreateNewVertex() {
@@ -61,7 +57,19 @@ public class DynamicMeshEditor : Editor {
 
         GameObject go = (GameObject)GameObject.Instantiate(prototype);
         go.transform.parent = (target as DynamicMesh).gameObject.transform;
-        go.transform.localPosition = Vector3.zero;
+
+        DynamicVertex[] vertices = (target as DynamicMesh).DynamicVertices;
+
+        go.name = "DynamicVertex" + (vertices.Length + 1);
+
+        if(vertices.Length > 1) {
+            Vector3 firstPos = vertices[0].transform.localPosition;
+            Vector3 lastPos = vertices[vertices.Length - 1].transform.localPosition;
+
+            go.transform.localPosition = MathUtils.MidPoint(firstPos, lastPos);
+        } else {
+            go.transform.localPosition = Vector3.zero;
+        }
 
         return go.GetComponent<DynamicVertex>();
     }

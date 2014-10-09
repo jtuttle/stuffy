@@ -8,13 +8,8 @@ public class DynamicMesh : MonoBehaviour {
     public GameObject Centroid;
 
 	void Awake() {
-        if(Centroid == null) {
-            Centroid = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            Centroid.name = "Centroid";
-            Centroid.transform.parent = gameObject.transform;
-            Centroid.transform.localPosition = Vector3.zero;
-            Centroid.transform.localScale = new Vector3(50.0f, 50.0f, 50.0f);
-        }
+        if(Centroid == null)
+            CreateCentroid();
 	}
 	
 	void Update() {
@@ -26,6 +21,14 @@ public class DynamicMesh : MonoBehaviour {
 
         UpdateCentroid();
 	}
+
+    private void CreateCentroid() {
+        Centroid = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        Centroid.name = "Centroid";
+        Centroid.transform.parent = gameObject.transform;
+        Centroid.transform.localPosition = Vector3.zero;
+        Centroid.transform.localScale = new Vector3(50.0f, 50.0f, 50.0f);
+    }
 
     private void ClearMesh() {
         gameObject.GetComponent<MeshFilter>().mesh.Clear();
