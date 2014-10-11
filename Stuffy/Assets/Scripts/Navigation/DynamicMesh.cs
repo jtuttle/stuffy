@@ -3,6 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 
 [ExecuteInEditMode]
+
+[RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
+
 public class DynamicMesh : MonoBehaviour {
     public delegate void VertexLinkCreatedHandler(DynamicVertex v1, DynamicVertex v2);
     public event VertexLinkCreatedHandler OnVertexLinkCreated = delegate { };
@@ -14,6 +17,36 @@ public class DynamicMesh : MonoBehaviour {
 
     public GameObject Centroid;
 
+    // To avoid leaking meshes, set mesh access up as follows:
+    // http://answers.unity3d.com/questions/14990/modifying-mesh-vertices-in-an-editor-script.html
+
+    private MeshFilter _meshFilter = null;
+    protected MeshFilter MeshFilter {
+        get {
+            if(_meshFilter == null)
+                _meshFilter = gameObject.GetComponent<MeshFilter>();
+            return _meshFilter;
+        }
+    }
+
+    private Mesh _mesh = null;
+    protected Mesh Mesh {
+        get {
+            if(_mesh != null) {
+                return _mesh;
+            } else {
+                if(MeshFilter.sharedMesh == null) {
+                    Mesh newMesh = new Mesh();
+                    _mesh = MeshFilter.sharedMesh = newMesh;
+                } else {
+                    _mesh = MeshFilter.sharedMesh;
+                }
+                return _mesh;
+            }
+        }
+    }
+
+
 	void Awake() {
         /*
         if(Centroid == null)
@@ -21,8 +54,7 @@ public class DynamicMesh : MonoBehaviour {
         */
 
         // Collect existing vertices and add link listeners.
-        DynamicVertex[] vertices = gameObject.GetComponentsInChildren<DynamicVertex>();
-        _vertices = new List<DynamicVertex>(vertices);
+        _vertices = new List<DynamicVertex>(gameObject.GetComponentsInChildren<DynamicVertex>());
 
         foreach(DynamicVertex vertex in _vertices) {
             vertex.OnLinkCreated += HandleVertexLinkCreated;
@@ -94,19 +126,17 @@ public class DynamicMesh : MonoBehaviour {
     }
 
     private void ClearMesh() {
-        gameObject.GetComponent<MeshFilter>().mesh.Clear();
+        Mesh.Clear();
     }
 
     private void UpdateMesh() {
-        Mesh mesh = gameObject.GetComponent<MeshFilter>().sharedMesh;
-
-        mesh.vertices = GetVertices();
-        mesh.uv = GetNormals();
-        mesh.triangles = GetTriangles();
+        Mesh.vertices = GetVertices();
+        Mesh.uv = GetNormals();
+        Mesh.triangles = GetTriangles();
         
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-        mesh.Optimize();
+        Mesh.RecalculateNormals();
+        Mesh.RecalculateBounds();
+        Mesh.Optimize();
     }
 
     private Vector3[] GetVertices() {

@@ -8,8 +8,16 @@ public class NavigationSystem : MonoBehaviour {
     private List<MeshLink> _meshLinks;
 
     void Awake() {
-        _meshes = new List<DynamicMesh>();
-        _meshLinks = new List<MeshLink>();
+        // Collect existing meshes and add link listeners.
+        _meshes = new List<DynamicMesh>(gameObject.GetComponentsInChildren<DynamicMesh>());
+
+        foreach(DynamicMesh mesh in _meshes) {
+            mesh.OnVertexLinkCreated += HandleVertexLinkCreated;
+            mesh.OnVertexLinkDestroyed += HandleVertexLinkDestroyed;
+        }
+
+        // Collect existing mesh links.
+        _meshLinks = new List<MeshLink>(gameObject.GetComponentsInChildren<MeshLink>());
     }
 
 	void Start() {
