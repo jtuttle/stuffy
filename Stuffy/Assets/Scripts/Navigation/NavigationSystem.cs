@@ -9,6 +9,7 @@ public class NavigationSystem : MonoBehaviour {
 
     void Awake() {
         _meshes = new List<DynamicMesh>();
+        _meshLinks = new List<MeshLink>();
     }
 
 	void Start() {
@@ -42,15 +43,15 @@ public class NavigationSystem : MonoBehaviour {
         Debug.Log("link created");
 
         VertexLink vertexLink = new VertexLink(v1, v2);
-
-        // Find existing link between meshes if one exists.
-        MeshLink meshLink = GetMeshLinkForVertexLink(vertexLink);
+        MeshLink meshLink = GetExistingMeshLinkForVertexLink(vertexLink);
 
         // No link exists between the two meshes.
-        if(meshLink == null) {
-            GameObject newGo = new GameObject();
-            meshLink = newGo.AddComponent<MeshLink>();
-        }
+        if(meshLink == null)
+            meshLink = CreateNewMeshLink();
+
+        // Link is already recorded.
+        if(meshLink.HasExactVertexLink(vertexLink))
+            return;
 
         // User tries to create a third link between two meshes.
         if(meshLink.IsFull()) {
@@ -59,12 +60,15 @@ public class NavigationSystem : MonoBehaviour {
             return;
         }
 
+        Debug.Log("adding vertex link: " + vertexLink);
+
         meshLink.AddVertexLink(vertexLink);
+        _meshLinks.Add(meshLink);
     }
 
-    private MeshLink GetMeshLinkForVertexLink(VertexLink vertexLink) {
+    private MeshLink GetExistingMeshLinkForVertexLink(VertexLink vertexLink) {
         foreach(MeshLink meshLink in _meshLinks) {
-            if(meshLink.HasMatchingLink(vertexLink))
+            if(meshLink.HasMatchingVertexLink(vertexLink))
                 return meshLink;
         }
 
@@ -73,6 +77,18 @@ public class NavigationSystem : MonoBehaviour {
 
     private void HandleVertexLinkDestroyed(DynamicVertex v1, DynamicVertex v2) {
         Debug.Log("link destroyed");
+
+        VertexLink vertexLink = new VertexLink(v1, v2);
+        MeshLink meshLink = GetExistingMeshLinkForVertexLink(vertexLink);
+
+        if(meshLink != null) {
+            meshLink.RemoveVertexLink(vertexLink);
+
+            if(meshLink.IsEmpty()) {
+                _meshLinks.Remove(meshLink);
+                GameObject.DestroyImmediate(meshLink.gameObject);
+            }
+        }
     }
 
     private DynamicMesh CreateNewMesh() {
