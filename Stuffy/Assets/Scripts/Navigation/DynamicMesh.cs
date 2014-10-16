@@ -1,6 +1,7 @@
-﻿using UnityEngine;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
 
 [ExecuteInEditMode]
 
@@ -56,10 +57,10 @@ public class DynamicMesh : MonoBehaviour {
         // Collect existing vertices and add link listeners.
         _vertices = new List<DynamicVertex>(gameObject.GetComponentsInChildren<DynamicVertex>());
 
-        foreach(DynamicVertex vertex in _vertices) {
-            vertex.OnLinkCreated += HandleVertexLinkCreated;
-            vertex.OnLinkDestroyed += HandleVertexLinkDestroyed;
-        }
+        //foreach(DynamicVertex vertex in _vertices) {
+            //vertex.OnLinkCreated += HandleVertexLinkCreated;
+            //vertex.OnLinkDestroyed += HandleVertexLinkDestroyed;
+        //}
 	}
 
     private void HandleVertexLinkCreated(DynamicVertex v1, DynamicVertex v2) {
@@ -104,7 +105,23 @@ public class DynamicMesh : MonoBehaviour {
 
         GameObject.DestroyImmediate(lastVertex.gameObject);
     }
-    
+
+    public bool PointInMesh(Vector2 point) {
+        bool oddNodes = false;
+
+        for(int i = 0; i < _vertices.Count; i++) {
+            Vector3 v1 = _vertices[i].transform.position;
+            Vector3 v2 = _vertices[(i + 1) % _vertices.Count].transform.position;
+
+            if(v1.y < point.y && v2.y >= point.y || v2.y < point.y && v1.y >= point.y) {
+                if(v1.x + (point.y - v1.y) / (v2.y - v1.y) * (v2.x - v1.x) < point.x)
+                    oddNodes = !oddNodes;
+            }
+        }
+
+        return oddNodes;
+    }
+
     private DynamicVertex CreateNewVertex() {
         GameObject prototype = (GameObject)Resources.Load("Prefabs/DynamicVertex");
         
@@ -130,6 +147,18 @@ public class DynamicMesh : MonoBehaviour {
     }
 
     private void UpdateMesh() {
+        // TEMP
+        List<Vector2> vertices = new List<Vector2>();
+
+        foreach(DynamicVertex dv in _vertices) {
+            Vector3 pos = dv.transform.position;
+            vertices.Add(new Vector2(pos.x, pos.y));
+        }
+
+        new EarClipping(vertices).GetTriangles();
+        // TEMP
+
+
         Mesh.vertices = GetVertices();
         Mesh.uv = GetNormals();
         Mesh.triangles = GetTriangles();
@@ -209,5 +238,75 @@ public class DynamicMesh : MonoBehaviour {
         cy /= (6 * signedArea);
 
         return new Vector2(cx, cy);
+    }
+
+    private int[] GetConvexTriangles() {
+        List<int> tris = new List<int>();
+
+        List<Vector2> vertices = new List<Vector2>();
+
+        foreach(DynamicVertex vertex in _vertices) {
+            Vector3 position = vertex.transform.position;
+            vertices.Add(new Vector2(position.x, position.y));
+        }
+
+        while(vertices.Count > 3) {
+            Vector2 leftmost = GetLeftmostVertex(vertices);
+            int leftmostIndex = vertices.FindIndex(v => v == leftmost);
+
+            int ccwIndex = (leftmostIndex - 1 + vertices.Count) % vertices.Count;
+            int cwIndex = (leftmostIndex + 1) % vertices.Count;
+
+            int[] tri = new int[3] { ccwIndex, leftmostIndex, cwIndex };
+
+            List<Vector2> innerVertices = new List<Vector2>();
+
+            for(int i = (cwIndex + 1) % vertices.Count; i % vertices.Count < ccwIndex; i++) {
+                Vector2 vertex = vertices[i];
+
+//                if(PointInTriangle(vertex, tri[0], tri[1], tri[2]))
+//                    innerVertices.Add(vertex);
+            }
+
+            if(innerVertices.Count > 0) {
+                innerVertices.Add(vertices[cwIndex]);
+                innerVertices.Add(vertices[ccwIndex]);
+
+                leftmost = GetLeftmostVertex(innerVertices);
+                tri[1] = innerVertices.FindIndex(v => v == leftmost);
+
+                innerVertices.Remove(leftmost);
+
+                leftmost = GetLeftmostVertex(innerVertices);
+                tri[2] = innerVertices.FindIndex(v => v == leftmost);
+            }
+        }
+
+        return tris.ToArray();
+    }
+
+    private Vector2 GetLeftmostVertex(List<Vector2> vertices) {
+        if(vertices.Count < 1)
+            throw new ArgumentException("Polygon must have at least one vertex.");
+
+        Vector2 leftmost = vertices[0];
+
+        for(int i = 1; i < vertices.Count; i++) {
+            Vector2 vertex = vertices[i];
+
+            if(vertex.x < leftmost.x)
+                leftmost = vertex;
+        }
+
+        return leftmost;
+    }
+
+    private bool PointInTriangle(Vector2 point, Vector2 v0, Vector2 v1, Vector2 v2) {
+        double area = 0.5 * (-v1.y * v2.x + v0.y * (-v1.x + v2.x) + v0.x * (v1.y - v2.y) + v1.x * v2.y);
+
+        double s = 1 / (2 * area) * (v0.y * v2.x - v0.x * v2.y + (v2.y - v0.y) * point.x + (v0.x - v2.x) * point.y);
+        double t = 1 / (2 * area) * (v0.x * v1.y - v0.y * v1.x + (v0.y - v1.y) * point.x + (v1.x - v0.x) * point.y);
+
+        return s >= 0 && s <= 1 && t >= 0 && t <= 1 && s + t <= 1;
     }
 }

@@ -11,6 +11,9 @@ public class NavigationSystemEditor : Editor {
         if(GUILayout.Button("Remove Mesh"))
             (target as NavigationSystem).RemoveMesh();
 
+        if(GUILayout.Button("Refresh Grid"))
+            (target as NavigationSystem).RefreshGrid();
+
         // These clear methods are kind of dangerous. Might
         // be best to just provide one-by-one removal.
         /*
