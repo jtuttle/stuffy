@@ -46,10 +46,11 @@ public class MeshLink : MonoBehaviour {
     }
 
     public void AddVertexLink(VertexLink vertexLink) {
-        if(VertexLink1 == null)
+        if(VertexLink1 == null) {
             VertexLink1 = vertexLink;
-        else if(VertexLink2 == null)
+        } else if(VertexLink2 == null) {
             VertexLink2 = vertexLink;
+        }
     }
 
     public void RemoveVertexLink(VertexLink vertexLink) {
