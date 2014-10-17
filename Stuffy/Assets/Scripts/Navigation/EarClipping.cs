@@ -16,37 +16,59 @@ public class EarClipping {
         LinkedList<Vector2> reflex = new LinkedList<Vector2>();
         LinkedList<Vector2> ears = new LinkedList<Vector2>();
 
-        LinkedListNode<Vector2> headNode = vertices.First;
-        LinkedListNode<Vector2> currentNode = null;
+        // Calculate convex and reflex angles.
+        for(LinkedListNode<Vector2> node = vertices.First; node != null; node = node.Next) {
+            LinkedListNode<Vector2> prevNode = node.Previous ?? node.List.Last;
+            LinkedListNode<Vector2> nextNode = node.Next ?? node.List.First;
 
-        while(currentNode != headNode) {
-            if(currentNode == null) currentNode = headNode;
+            float angle = GetAngleForPoints(prevNode.Value, node.Value, nextNode.Value);
 
-            LinkedListNode<Vector2> prevNode = currentNode.Previous ?? currentNode.List.Last;
-            LinkedListNode<Vector2> nextNode = currentNode.Next ?? currentNode.List.First;
-
-            /*
-            Vector2 p0 = current.Previous.Value;
-            Vector2 p1 = current.Value;
-            Vector2 p2 = current.Next.Value;
-            */
-           
-            float angle = GetAngleForPoints(prevNode.Value, currentNode.Value, nextNode.Value);
-
-            Debug.Log("angle for " + currentNode.Value + ": " + angle);
+            //Debug.Log("angle for " + currentNode.Value + ": " + angle);
 
             if(angle < 180)
-                convex.AddLast(currentNode.Value);
+                convex.AddLast(node.Value);
             else
-                reflex.AddLast(currentNode.Value);
+                reflex.AddLast(node.Value);
 
-            currentNode = nextNode;
+            node = nextNode;
         }
 
-        PrintList(convex);
-        PrintList(reflex);
+        PrintList("convex: ", convex);
+        PrintList("reflex: ", reflex);
+
+        // Perform ear test on all vertices.
+        for(LinkedListNode<Vector2> node = convex.First; node != null; node = node.Next) {
+            if(IsEar(node, reflex))
+                ears.AddLast(node.Value);
+        }
+
+        PrintList("ears: ", ears);
 
         return null;
+    }
+
+    private bool IsEar(LinkedListNode<Vector2> node, LinkedList<Vector2> reflex) {
+        LinkedListNode<Vector2> prevNode = node.Previous ?? node.List.Last;
+        LinkedListNode<Vector2> nextNode = node.Next ?? node.List.First;
+
+        for(LinkedListNode<Vector2> reflexNode = reflex.First; reflexNode != null; reflexNode = reflexNode.Next) {
+            if(PointInTriangle(reflexNode.Value, prevNode.Value, node.Value, nextNode.Value))
+                return false;
+        }
+
+        return true;
+    }
+
+    private void PrintList(string prefix, LinkedList<Vector2> list) {
+        LinkedListNode<Vector2> current = list.First;
+        string output = prefix;
+        
+        while(current != null) {
+            output += current.Value.ToString();
+            current = current.Next;
+        }
+        
+        Debug.Log(output);
     }
 
     private float GetAngleForPoints(Vector2 p0, Vector2 p1, Vector2 p2) {
@@ -62,15 +84,30 @@ public class EarClipping {
         return degrees;
     }
 
-    private void PrintList(LinkedList<Vector2> list) {
-        LinkedListNode<Vector2> current = list.First;
-        string output = "";
+    /*
+    private bool PointInTriangle(Vector2 point, Vector2 v0, Vector2 v1, Vector2 v2) {
+        double area = 0.5 * (-v1.y * v2.x + v0.y * (-v1.x + v2.x) + v0.x * (v1.y - v2.y) + v1.x * v2.y);
+        
+        double s = 1 / (2 * area) * (v0.y * v2.x - v0.x * v2.y + (v2.y - v0.y) * point.x + (v0.x - v2.x) * point.y);
+        double t = 1 / (2 * area) * (v0.x * v1.y - v0.y * v1.x + (v0.y - v1.y) * point.x + (v1.x - v0.x) * point.y);
+        
+        return s >= 0 && s <= 1 && t >= 0 && t <= 1 && s + t <= 1;
+    }
+    */
 
-        while(current != null) {
-            output += current.Value.ToString();
-            current = current.Next;
-        }
+    private bool PointInTriangle(Vector2 point, Vector2 v0, Vector2 v1, Vector2 v2) {
+        double area = 0.5 * (-v1.y * v2.x + v0.y * (-v1.x + v2.x) + v0.x * (v1.y - v2.y) + v1.x * v2.y);
 
-        Debug.Log(output);
+        float dot00 = Vector2.Dot(v0, v0);
+        float dot01 = Vector2.Dot(v0, v1);
+        float dot02 = Vector2.Dot(v0, v2);
+        float dot11 = Vector2.Dot(v1, v1);
+        float dot12 = Vector2.Dot(v1, v2);
+
+        float invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
+        float u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+        float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+            
+        return (u >= 0) && (v >= 0) && (u + v < 1);
     }
 }
