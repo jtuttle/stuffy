@@ -10,8 +10,9 @@ public class EarClipping {
     }
 
     public int[] GetTriangles() {
-        LinkedList<Vector2> vertices = new LinkedList<Vector2>(_vertexList);
+        List<int> tris = new List<int>();
 
+        LinkedList<Vector2> vertices = new LinkedList<Vector2>(_vertexList.ToArray());
         LinkedList<Vector2> convex = new LinkedList<Vector2>();
         LinkedList<Vector2> reflex = new LinkedList<Vector2>();
         LinkedList<Vector2> ears = new LinkedList<Vector2>();
@@ -23,52 +24,98 @@ public class EarClipping {
 
             float angle = GetAngleForPoints(prevNode.Value, node.Value, nextNode.Value);
 
-            //Debug.Log("angle for " + currentNode.Value + ": " + angle);
-
             if(angle < 180)
                 convex.AddLast(node.Value);
             else
                 reflex.AddLast(node.Value);
-
-            node = nextNode;
         }
-
-        PrintList("convex: ", convex);
-        PrintList("reflex: ", reflex);
 
         // Perform ear test on all vertices.
         for(LinkedListNode<Vector2> node = convex.First; node != null; node = node.Next) {
-            if(IsEar(node, reflex))
-                ears.AddLast(node.Value);
+            LinkedListNode<Vector2> testNode = vertices.Find(node.Value);
+
+            if(IsEar(testNode, reflex))
+                ears.AddLast(testNode.Value);
         }
 
-        PrintList("ears: ", ears);
+        // TODO - a lot of this can be improved with some book-keeping.
+        while(vertices.Count > 3) {
+            PrintList("ears: ", ears);
 
-        return null;
+            LinkedListNode<Vector2> firstEar = vertices.Find(ears.First.Value);
+
+            LinkedListNode<Vector2> prevNode = firstEar.Previous ?? firstEar.List.Last;
+            LinkedListNode<Vector2> nextNode = firstEar.Next ?? firstEar.List.First;
+
+            LinkedListNode<Vector2> prevPrevNode = prevNode.Previous ?? prevNode.List.Last;
+            LinkedListNode<Vector2> nextNextNode = nextNode.Next ?? nextNode.List.First;
+
+            ears.Remove(firstEar.Value);
+            vertices.Remove(firstEar.Value);
+
+            tris.Add(_vertexList.IndexOf(prevNode.Value));
+            tris.Add(_vertexList.IndexOf(firstEar.Value));
+            tris.Add(_vertexList.IndexOf(nextNode.Value));
+
+            // Skip this part if there are only two nodes left.
+            if(prevPrevNode.Value != nextNode.Value) {
+                float prevAngleBefore = GetAngleForPoints(prevPrevNode.Value, prevNode.Value, firstEar.Value);
+                float prevAngleAfter = GetAngleForPoints(prevPrevNode.Value, prevNode.Value, nextNode.Value);
+
+                if(prevAngleBefore < 180 && prevAngleAfter >= 180) {
+                    convex.Remove(prevNode.Value);
+                    reflex.AddLast(prevNode.Value);
+                } else if(prevAngleBefore >= 180 && prevAngleAfter < 180) {
+                    reflex.Remove(prevNode.Value);
+
+                    LinkedListNode<Vector2> newConvex = convex.AddLast(prevNode.Value);
+                    
+                    if(IsEar(newConvex, reflex))
+                        ears.AddLast(newConvex.Value);
+                }
+
+                float nextAngleBefore = GetAngleForPoints(firstEar.Value, nextNode.Value, nextNextNode.Value);
+                float nextAngleAfter = GetAngleForPoints(prevNode.Value, nextNode.Value, nextNextNode.Value);
+
+                if(nextAngleBefore < 180 && nextAngleAfter >= 180) {
+                    convex.Remove(nextNode.Value);
+                    reflex.AddLast(nextNode.Value);
+                } else if(nextAngleBefore >= 180 && nextAngleAfter < 180) {
+                    reflex.Remove(nextNode.Value);
+
+                    LinkedListNode<Vector2> newConvex = convex.AddLast(nextNode.Value);
+
+                    if(IsEar(newConvex, reflex))
+                        ears.AddLast(newConvex.Value);
+                }
+            }
+        }
+
+        tris.Add(_vertexList.IndexOf(vertices.First.Value));
+        tris.Add(_vertexList.IndexOf(vertices.First.Next.Value));
+        tris.Add(_vertexList.IndexOf(vertices.Last.Value));
+
+        return tris.ToArray();
     }
 
     private bool IsEar(LinkedListNode<Vector2> node, LinkedList<Vector2> reflex) {
         LinkedListNode<Vector2> prevNode = node.Previous ?? node.List.Last;
         LinkedListNode<Vector2> nextNode = node.Next ?? node.List.First;
 
+        Debug.Log("testing: " + GetIndex(prevNode) + "," + GetIndex(node) + "," + GetIndex(nextNode));
+
         for(LinkedListNode<Vector2> reflexNode = reflex.First; reflexNode != null; reflexNode = reflexNode.Next) {
-            if(PointInTriangle(reflexNode.Value, prevNode.Value, node.Value, nextNode.Value))
+            if(reflexNode.Value != prevNode.Value
+               && reflexNode.Value != node.Value
+               && reflexNode.Value != nextNode.Value
+               && PointInTriangle(reflexNode.Value, prevNode.Value, node.Value, nextNode.Value)) {
+
+                Debug.Log("FAILURE: " + reflexNode.Value + " in " + prevNode.Value + "," + node.Value + "," + nextNode.Value);
                 return false;
+            }
         }
 
         return true;
-    }
-
-    private void PrintList(string prefix, LinkedList<Vector2> list) {
-        LinkedListNode<Vector2> current = list.First;
-        string output = prefix;
-        
-        while(current != null) {
-            output += current.Value.ToString();
-            current = current.Next;
-        }
-        
-        Debug.Log(output);
     }
 
     private float GetAngleForPoints(Vector2 p0, Vector2 p1, Vector2 p2) {
@@ -84,19 +131,11 @@ public class EarClipping {
         return degrees;
     }
 
-    /*
-    private bool PointInTriangle(Vector2 point, Vector2 v0, Vector2 v1, Vector2 v2) {
-        double area = 0.5 * (-v1.y * v2.x + v0.y * (-v1.x + v2.x) + v0.x * (v1.y - v2.y) + v1.x * v2.y);
-        
-        double s = 1 / (2 * area) * (v0.y * v2.x - v0.x * v2.y + (v2.y - v0.y) * point.x + (v0.x - v2.x) * point.y);
-        double t = 1 / (2 * area) * (v0.x * v1.y - v0.y * v1.x + (v0.y - v1.y) * point.x + (v1.x - v0.x) * point.y);
-        
-        return s >= 0 && s <= 1 && t >= 0 && t <= 1 && s + t <= 1;
-    }
-    */
-
-    private bool PointInTriangle(Vector2 point, Vector2 v0, Vector2 v1, Vector2 v2) {
-        double area = 0.5 * (-v1.y * v2.x + v0.y * (-v1.x + v2.x) + v0.x * (v1.y - v2.y) + v1.x * v2.y);
+    // Transcribed from here: http://www.blackpawn.com/texts/pointinpoly/
+    private bool PointInTriangle(Vector2 point, Vector2 p0, Vector2 p1, Vector2 p2) {
+        Vector2 v0 = p2 - p0;
+        Vector2 v1 = p1 - p0;
+        Vector2 v2 = point - p0;
 
         float dot00 = Vector2.Dot(v0, v0);
         float dot01 = Vector2.Dot(v0, v1);
@@ -109,5 +148,41 @@ public class EarClipping {
         float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
             
         return (u >= 0) && (v >= 0) && (u + v < 1);
+    }
+
+    /*
+    private bool PointInTriangle(Vector2 point, Vector2 v0, Vector2 v1, Vector2 v2) {
+        double area = 0.5 * (-v1.y * v2.x + v0.y * (-v1.x + v2.x) + v0.x * (v1.y - v2.y) + v1.x * v2.y);
+        
+        double s = 1 / (2 * area) * (v0.y * v2.x - v0.x * v2.y + (v2.y - v0.y) * point.x + (v0.x - v2.x) * point.y);
+        double t = 1 / (2 * area) * (v0.x * v1.y - v0.y * v1.x + (v0.y - v1.y) * point.x + (v1.x - v0.x) * point.y);
+        
+        return s >= 0 && s <= 1 && t >= 0 && t <= 1 && s + t <= 1;
+    }
+    */
+
+    private void PrintList(string prefix, LinkedList<Vector2> list) {
+        LinkedListNode<Vector2> current = list.First;
+        string output = prefix;
+        
+        while(current != null) {
+            output += current.Value.ToString();
+            current = current.Next;
+        }
+        
+        Debug.Log(output);
+    }
+
+    private int GetIndex(LinkedListNode<Vector2> targetNode) {
+        int index = 0;
+
+        for(LinkedListNode<Vector2> node = targetNode.List.First; node != null; node = node.Next) {
+            if(node.Value == targetNode.Value)
+                return index;
+
+            index++;
+        }
+
+        return -1;
     }
 }
