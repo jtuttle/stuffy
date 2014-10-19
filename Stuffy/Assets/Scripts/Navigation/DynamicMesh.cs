@@ -155,13 +155,9 @@ public class DynamicMesh : MonoBehaviour {
             vertices.Add(new Vector2(pos.x, pos.y));
         }
 
-        new EarClipping(vertices).GetTriangles();
-        // TEMP
-
-
         Mesh.vertices = GetVertices();
         Mesh.uv = GetNormals();
-        Mesh.triangles = GetTriangles();
+        Mesh.triangles = new EarClipping(vertices).GetTriangles(); //GetTriangles();
         
         Mesh.RecalculateNormals();
         Mesh.RecalculateBounds();
@@ -188,25 +184,6 @@ public class DynamicMesh : MonoBehaviour {
         return normals;
     }
 
-    // TODO: this could also just be regenerated when points change
-    private int[] GetTriangles() {
-        int triCount = _vertices.Count - 2;
-
-        int[] triangles = new int[3 * triCount];
-
-        for(int i = 0; i < triCount; i++) {
-            int idx = i * 3;
-
-            triangles[idx] = 0;
-            triangles[idx + 1] = i + 1;
-            triangles[idx + 2] = i + 2;
-
-            //Debug.Log("tri with " + triangles[i] + " " + triangles[i + 1] + " " + triangles[i + 2]);
-        }
-
-        return triangles;
-    }
-    
     private void UpdateCentroid() {
         if(_vertices == null || _vertices.Count < 2) {
             Centroid.transform.localPosition = Vector3.zero;
