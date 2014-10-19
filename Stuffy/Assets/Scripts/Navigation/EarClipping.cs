@@ -40,8 +40,6 @@ public class EarClipping {
 
         // TODO - a lot of this can be improved with some book-keeping.
         while(vertices.Count > 3) {
-            PrintList("ears: ", ears);
-
             LinkedListNode<Vector2> firstEar = vertices.Find(ears.First.Value);
 
             LinkedListNode<Vector2> prevNode = firstEar.Previous ?? firstEar.List.Last;
@@ -91,6 +89,7 @@ public class EarClipping {
             }
         }
 
+        // Add the last remaining triangle.
         tris.Add(_vertexList.IndexOf(vertices.First.Value));
         tris.Add(_vertexList.IndexOf(vertices.First.Next.Value));
         tris.Add(_vertexList.IndexOf(vertices.Last.Value));
@@ -102,15 +101,12 @@ public class EarClipping {
         LinkedListNode<Vector2> prevNode = node.Previous ?? node.List.Last;
         LinkedListNode<Vector2> nextNode = node.Next ?? node.List.First;
 
-        Debug.Log("testing: " + GetIndex(prevNode) + "," + GetIndex(node) + "," + GetIndex(nextNode));
-
         for(LinkedListNode<Vector2> reflexNode = reflex.First; reflexNode != null; reflexNode = reflexNode.Next) {
             if(reflexNode.Value != prevNode.Value
                && reflexNode.Value != node.Value
                && reflexNode.Value != nextNode.Value
                && PointInTriangle(reflexNode.Value, prevNode.Value, node.Value, nextNode.Value)) {
 
-                Debug.Log("FAILURE: " + reflexNode.Value + " in " + prevNode.Value + "," + node.Value + "," + nextNode.Value);
                 return false;
             }
         }
