@@ -38,6 +38,12 @@ public class EarClipping {
                 ears.AddLast(testNode.Value);
         }
 
+        /*
+        PrintList("convex: ", convex);
+        PrintList("reflex: ", reflex);
+        PrintList("ears: ", ears);
+        */
+
         // TODO - a lot of this can be improved with some book-keeping.
         while(vertices.Count > 3) {
             LinkedListNode<Vector2> firstEar = vertices.Find(ears.First.Value);
@@ -57,35 +63,35 @@ public class EarClipping {
 
             // Skip this part if there are only two nodes left.
             if(prevPrevNode.Value != nextNode.Value) {
+                // Convert reflex neighbor vertices to convex if angle changed and perform an ear test.
                 float prevAngleBefore = GetAngleForPoints(prevPrevNode.Value, prevNode.Value, firstEar.Value);
                 float prevAngleAfter = GetAngleForPoints(prevPrevNode.Value, prevNode.Value, nextNode.Value);
 
-                if(prevAngleBefore < 180 && prevAngleAfter >= 180) {
-                    convex.Remove(prevNode.Value);
-                    reflex.AddLast(prevNode.Value);
-                } else if(prevAngleBefore >= 180 && prevAngleAfter < 180) {
+                if(prevAngleBefore >= 180 && prevAngleAfter < 180) {
                     reflex.Remove(prevNode.Value);
-
-                    LinkedListNode<Vector2> newConvex = convex.AddLast(prevNode.Value);
+                    convex.AddLast(prevNode.Value);
                     
-                    if(IsEar(newConvex, reflex))
-                        ears.AddLast(newConvex.Value);
+                    if(IsEar(prevNode, reflex))
+                        ears.AddLast(prevNode.Value);
                 }
 
                 float nextAngleBefore = GetAngleForPoints(firstEar.Value, nextNode.Value, nextNextNode.Value);
                 float nextAngleAfter = GetAngleForPoints(prevNode.Value, nextNode.Value, nextNextNode.Value);
 
-                if(nextAngleBefore < 180 && nextAngleAfter >= 180) {
-                    convex.Remove(nextNode.Value);
-                    reflex.AddLast(nextNode.Value);
-                } else if(nextAngleBefore >= 180 && nextAngleAfter < 180) {
+                if(nextAngleBefore >= 180 && nextAngleAfter < 180) {
                     reflex.Remove(nextNode.Value);
+                    convex.AddLast(nextNode.Value);
 
-                    LinkedListNode<Vector2> newConvex = convex.AddLast(nextNode.Value);
-
-                    if(IsEar(newConvex, reflex))
-                        ears.AddLast(newConvex.Value);
+                    if(IsEar(nextNode, reflex))
+                        ears.AddLast(nextNode.Value);
                 }
+
+                // Remove neighbor vertices if they are no longer an ear after ear node removal.
+                if(!IsEar(prevNode, reflex))
+                    ears.Remove(prevNode.Value);
+
+                if(!IsEar(nextNode, reflex))
+                    ears.Remove(nextNode.Value);
             }
         }
 
@@ -162,7 +168,7 @@ public class EarClipping {
         string output = prefix;
         
         while(current != null) {
-            output += current.Value.ToString();
+            output += current.Value.ToString() + ", ";
             current = current.Next;
         }
         
