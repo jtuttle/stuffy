@@ -2,6 +2,12 @@
 using System.Collections;
 using System.Collections.Generic;
 
+/*
+ * Implementation of http://www.geometrictools.com/Documentation/TriangulationByEarClipping.pdf 
+ * Converts a polygon (convex or concave) into triangles by repeatedly removing triangles that 
+ * have no other vertices inside them. Probably needs to be optimized a bit.
+ */
+
 public class EarClipping {
     private List<Vector2> _vertexList;
 
