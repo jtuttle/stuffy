@@ -17,7 +17,7 @@ public class PolygonIntersection {
         if(poly1.Length < 3 || poly2.Length < 3) {
             throw new ArgumentException(
                 string.Format("The polygons passed in must have at least 3 points: subject={0}, clip={1}", 
-                          poly1.Length.ToString(), poly2.Length.ToString()));
+                              poly1.Length.ToString(), poly2.Length.ToString()));
         }
 
         List<Vector2> outputList = new List<Vector2>(poly1);
